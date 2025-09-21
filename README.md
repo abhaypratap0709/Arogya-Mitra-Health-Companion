@@ -134,6 +134,5 @@ This project is licensed under the MIT License.
 - Folium for mapping capabilities
 - Plotly for interactive charts
 
----
 
-**Made with ❤️ for Indian healthcare**
+
