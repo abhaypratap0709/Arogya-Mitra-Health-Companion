@@ -1,7 +1,6 @@
 import sqlite3
 import hashlib
-import os
-from datetime import datetime
+from datetime import datetime, date
 
 class DatabaseManager:
     def __init__(self, db_path="arogya_mitra.db"):
@@ -21,6 +20,8 @@ class DatabaseManager:
                 phone TEXT UNIQUE NOT NULL,
                 age INTEGER,
                 gender TEXT,
+                state TEXT,
+                city TEXT,
                 password_hash TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -99,7 +100,7 @@ class DatabaseManager:
         """Hash password using SHA-256"""
         return hashlib.sha256(password.encode()).hexdigest()
     
-    def create_user(self, name, phone, age, gender, password):
+    def create_user(self, name, phone, age, gender, password, state=None, city=None):
         """Create a new user"""
         try:
             conn = sqlite3.connect(self.db_path)
@@ -108,9 +109,9 @@ class DatabaseManager:
             password_hash = self.hash_password(password)
             
             cursor.execute('''
-                INSERT INTO users (name, phone, age, gender, password_hash)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (name, phone, age, gender, password_hash))
+                INSERT INTO users (name, phone, age, gender, state, city, password_hash)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (name, phone, age, gender, state, city, password_hash))
             
             user_id = cursor.lastrowid
             conn.commit()
@@ -141,7 +142,7 @@ class DatabaseManager:
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, name, phone, age, gender, created_at
+            SELECT id, name, phone, age, gender, state, city, created_at
             FROM users WHERE id = ?
         ''', (user_id,))
         
@@ -217,16 +218,30 @@ class DatabaseManager:
         conn.commit()
         conn.close()
     
-    def add_vital_sign(self, user_id, measurement_type, value, unit):
+    def add_vital_sign(self, user_id, measurement_type, value, unit, measurement_date=None):
         """Add vital sign measurement"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
-        cursor.execute('''
-            INSERT INTO vital_signs (user_id, measurement_type, value, unit)
-            VALUES (?, ?, ?, ?)
-        ''', (user_id, measurement_type, value, unit))
-        
+
+        if measurement_date is not None:
+            # Normalize date/datetime to string acceptable by SQLite
+            if isinstance(measurement_date, datetime):
+                md = measurement_date.strftime('%Y-%m-%d %H:%M:%S')
+            elif isinstance(measurement_date, date):
+                md = measurement_date.strftime('%Y-%m-%d')
+            else:
+                md = str(measurement_date)
+
+            cursor.execute('''
+                INSERT INTO vital_signs (user_id, measurement_type, value, unit, measurement_date)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (user_id, measurement_type, value, unit, md))
+        else:
+            cursor.execute('''
+                INSERT INTO vital_signs (user_id, measurement_type, value, unit)
+                VALUES (?, ?, ?, ?)
+            ''', (user_id, measurement_type, value, unit))
+
         conn.commit()
         conn.close()
     

@@ -12,6 +12,16 @@ def init_session_state():
     if 'show_record_form' not in st.session_state:
         st.session_state.show_record_form = False
 
+    # Quick action toggles
+    if 'show_vitals_form' not in st.session_state:
+        st.session_state.show_vitals_form = False
+
+    if 'show_medication_reminders' not in st.session_state:
+        st.session_state.show_medication_reminders = False
+
+    if 'show_achievements' not in st.session_state:
+        st.session_state.show_achievements = False
+
 def get_language_options():
     """Get available language options"""
     return {

@@ -7,6 +7,7 @@ from translator import TranslationManager
 class PrescriptionAnalyzer:
     def __init__(self):
         self.translator = TranslationManager()
+        self.last_error = None
         
         # Common medication patterns
         self.dosage_patterns = [
@@ -59,6 +60,13 @@ class PrescriptionAnalyzer:
     def analyze_prescription(self, image, target_language='en'):
         """Analyze prescription image using OCR"""
         try:
+            # Ensure Tesseract is available
+            self.last_error = None
+            try:
+                _ = pytesseract.get_tesseract_version()
+            except Exception as te:
+                self.last_error = f"Tesseract OCR not available: {te}"
+                return None
             # Extract text using OCR
             extracted_text = pytesseract.image_to_string(image, lang='eng')
             
@@ -83,6 +91,15 @@ class PrescriptionAnalyzer:
         except Exception as e:
             print(f"OCR Analysis Error: {str(e)}")
             return None
+
+    def is_tesseract_available(self):
+        """Check if local Tesseract binary is available"""
+        try:
+            _ = pytesseract.get_tesseract_version()
+            return True
+        except Exception as e:
+            self.last_error = str(e)
+            return False
     
     def parse_medications(self, text):
         """Parse medications and their details from extracted text"""

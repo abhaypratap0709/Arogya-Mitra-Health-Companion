@@ -38,29 +38,61 @@ class HealthDashboard:
                 badge_count
             )
         
-        # Quick Actions
+        # Quick Actions with persistent toggles
         st.subheader(self.translator.translate_text("Quick Actions", language))
         col1, col2, col3, col4 = st.columns(4)
-        
+
         with col1:
             if st.button("📊 " + self.translator.translate_text("Log Vitals", language)):
-                self.show_vitals_input(user_id, language)
-        
+                st.session_state.show_vitals_form = True
+
         with col2:
             if st.button("💊 " + self.translator.translate_text("Medication Reminder", language)):
-                self.show_medication_reminders(user_id, language)
-        
+                st.session_state.show_medication_reminders = True
+
         with col3:
             if st.button("📋 " + self.translator.translate_text("Add Record", language)):
                 st.session_state.show_record_form = True
-        
+
         with col4:
             if st.button("🏆 " + self.translator.translate_text("View Achievements", language)):
-                self.show_achievements(user_id, language)
+                st.session_state.show_achievements = True
         
+        # Conditional sections triggered by Quick Actions
+        if st.session_state.get('show_vitals_form', False):
+            self.show_vitals_input(user_id, language)
+
+        if st.session_state.get('show_medication_reminders', False):
+            self.show_medication_reminders(user_id, language)
+
+        if st.session_state.get('show_achievements', False):
+            self.show_achievements(user_id, language)
+
         # Vital Signs Charts
         self.render_vital_signs_charts(user_id, language)
         
+        # Inline Add Record form when toggled
+        if st.session_state.get('show_record_form', False):
+            with st.expander(self.translator.translate_text("Add New Health Record", language), expanded=True):
+                with st.form("inline_health_record_form"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        record_type = st.selectbox(
+                            self.translator.translate_text("Record Type", language),
+                            ["Consultation", "Lab Report", "Prescription", "Vaccination", "Surgery", "Other"]
+                        )
+                        doctor_name = st.text_input(self.translator.translate_text("Doctor Name", language))
+                        hospital_name = st.text_input(self.translator.translate_text("Hospital/Clinic Name", language))
+                    with col2:
+                        description = st.text_area(self.translator.translate_text("Description", language))
+                        record_date = st.date_input(self.translator.translate_text("Date", language), value=datetime.now().date())
+                    submitted = st.form_submit_button(self.translator.translate_text("Add Record", language))
+                    if submitted and description:
+                        self.db.add_health_record(user_id, record_type, description, doctor_name, hospital_name, record_date)
+                        st.session_state.show_record_form = False
+                        st.success(self.translator.translate_text("Health record added successfully!", language))
+                        st.rerun()
+
         # Recent Activity
         self.render_recent_activity(user_id, language)
         
@@ -112,7 +144,7 @@ class HealthDashboard:
             submitted = st.form_submit_button(self.translator.translate_text("Log Measurement", language))
             
             if submitted and value > 0:
-                self.db.add_vital_sign(user_id, vital_type, value, unit)
+                self.db.add_vital_sign(user_id, vital_type, value, unit, measurement_date)
                 st.success(self.translator.translate_text("Vital sign logged successfully!", language))
                 st.rerun()
     

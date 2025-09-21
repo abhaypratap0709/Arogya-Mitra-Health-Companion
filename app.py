@@ -1,7 +1,4 @@
 import streamlit as st
-import sqlite3
-import os
-from datetime import datetime, timedelta
 import pandas as pd
 from PIL import Image
 import io
@@ -14,8 +11,16 @@ from translator import TranslationManager
 from emergency_sos import EmergencySOSManager
 from health_dashboard import HealthDashboard
 from utils import init_session_state, get_language_options
+from indian_states_cities import get_states, get_cities_for_state
 
-# Initialize session state
+st.set_page_config(
+    page_title="Arogya Mitra - Health Companion",
+    page_icon="🏥",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Initialize session state (must be after set_page_config)
 init_session_state()
 
 # Initialize managers
@@ -26,13 +31,6 @@ sos_manager = EmergencySOSManager()
 dashboard = HealthDashboard(db_manager)
 
 def main():
-    st.set_page_config(
-        page_title="Arogya Mitra - Health Companion",
-        page_icon="🏥",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-    
     # Language selection in sidebar
     st.sidebar.title("🌐 Language / भाषा")
     language_options = get_language_options()
@@ -112,16 +110,36 @@ def show_registration_login():
     
     with tab2:
         with st.form("register_form"):
-            name = st.text_input(translator.translate_text("Full Name", st.session_state.language))
-            phone = st.text_input(translator.translate_text("Phone Number", st.session_state.language))
-            age = st.number_input(translator.translate_text("Age", st.session_state.language), min_value=1, max_value=100)
-            gender = st.selectbox(translator.translate_text("Gender", st.session_state.language), 
-                                ["Male", "Female", "Other"])
-            password = st.text_input(translator.translate_text("Password", st.session_state.language), type="password")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                name = st.text_input(translator.translate_text("Full Name", st.session_state.language))
+                phone = st.text_input(translator.translate_text("Phone Number", st.session_state.language))
+                age = st.number_input(translator.translate_text("Age", st.session_state.language), min_value=1, max_value=100)
+                gender = st.selectbox(translator.translate_text("Gender", st.session_state.language), 
+                                    ["Male", "Female", "Other"])
+            
+            with col2:
+                # State selection
+                states = get_states()
+                selected_state = st.selectbox(
+                    translator.translate_text("State", st.session_state.language),
+                    options=states,
+                    index=0
+                )
+                
+                # City input field
+                selected_city = st.text_input(
+                    translator.translate_text("City", st.session_state.language),
+                    placeholder=translator.translate_text("Enter your city", st.session_state.language)
+                )
+                
+                password = st.text_input(translator.translate_text("Password", st.session_state.language), type="password")
+            
             submitted = st.form_submit_button(translator.translate_text("Register", st.session_state.language))
             
-            if submitted and all([name, phone, age, gender, password]):
-                user_id = db_manager.create_user(name, phone, age, gender, password)
+            if submitted and all([name, phone, age, gender, password, selected_state, selected_city]):
+                user_id = db_manager.create_user(name, phone, age, gender, password, selected_state, selected_city)
                 if user_id:
                     st.session_state.user_id = user_id
                     st.session_state.user_name = name
@@ -200,7 +218,7 @@ def show_upload_documents():
                 
                 if st.button(translator.translate_text("Save Document", st.session_state.language), key=f"save_{uploaded_file.name}"):
                     # Convert file to bytes for storage
-                    file_bytes = uploaded_file.read()
+                    file_bytes = uploaded_file.getvalue()
                     file_base64 = base64.b64encode(file_bytes).decode()
                     
                     # Save to database
@@ -238,13 +256,22 @@ def show_upload_documents():
 
 def show_prescription_analysis():
     st.subheader(translator.translate_text("AI-Powered Prescription Analysis", st.session_state.language))
+    # Tesseract status
+    try:
+        import pytesseract
+        _ = pytesseract.get_tesseract_version()
+        tesseract_ok = True
+    except Exception as _e:
+        tesseract_ok = False
+        st.warning(translator.translate_text("Tesseract OCR is not installed or not found. Please install it to enable analysis.", st.session_state.language))
+        st.caption("Windows: Install from https://github.com/UB-Mannheim/tesseract/wiki and restart the app.")
     
     uploaded_file = st.file_uploader(
         translator.translate_text("Upload prescription image", st.session_state.language),
         type=['jpg', 'jpeg', 'png']
     )
     
-    if uploaded_file:
+    if uploaded_file and tesseract_ok:
         image = Image.open(uploaded_file)
         col1, col2 = st.columns([1, 1])
         
@@ -320,8 +347,25 @@ def show_emergency_sos():
         # Hospital locator
         st.subheader(translator.translate_text("Nearest Hospitals", st.session_state.language))
         
-        # Get user location (simplified - in real app would use geolocation)
-        city = st.text_input(translator.translate_text("Enter your city/area", st.session_state.language), value="Kochi")
+        # City selection with autocomplete
+        available_cities = sos_manager.get_available_cities()
+        city_options = [city.title() for city in available_cities]
+        
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            selected_city = st.selectbox(
+                translator.translate_text("Select your city", st.session_state.language),
+                options=city_options,
+                index=0
+            )
+        with col2:
+            custom_city = st.text_input(
+                translator.translate_text("Or enter custom city", st.session_state.language),
+                placeholder="e.g., Mumbai, Delhi, Bangalore"
+            )
+        
+        # Use custom input if provided, otherwise use selected city
+        city = custom_city if custom_city else selected_city
         
         if city:
             # Generate and display map
@@ -354,6 +398,10 @@ def show_profile():
             st.write(f"**{translator.translate_text('Phone', st.session_state.language)}:** {user_data[2]}")
             st.write(f"**{translator.translate_text('Age', st.session_state.language)}:** {user_data[3]}")
             st.write(f"**{translator.translate_text('Gender', st.session_state.language)}:** {user_data[4]}")
+            if user_data[5]:  # State
+                st.write(f"**{translator.translate_text('State', st.session_state.language)}:** {user_data[5]}")
+            if user_data[6]:  # City
+                st.write(f"**{translator.translate_text('City', st.session_state.language)}:** {user_data[6]}")
         
         with col2:
             # Health score and gamification
