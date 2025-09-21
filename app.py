@@ -12,6 +12,7 @@ from emergency_sos import EmergencySOSManager
 from health_dashboard import HealthDashboard
 from utils import init_session_state, get_language_options
 from indian_states_cities import get_states, get_cities_for_state
+from admin_portal import AdminPortal
 
 st.set_page_config(
     page_title="Arogya Mitra - Health Companion",
@@ -29,6 +30,7 @@ ocr_analyzer = PrescriptionAnalyzer()
 translator = TranslationManager()
 sos_manager = EmergencySOSManager()
 dashboard = HealthDashboard(db_manager)
+admin_portal = AdminPortal()
 
 def main():
     # Language selection in sidebar
@@ -52,7 +54,8 @@ def main():
         "Upload Documents": "📤 Upload Documents",
         "Prescription Analysis": "💊 Prescription Analysis",
         "Emergency SOS": "🚨 Emergency SOS",
-        "Profile": "👤 Profile"
+        "Profile": "👤 Profile",
+        "Admin Portal": "⚙️ Admin Portal"
     }
     
     # Translate navigation options
@@ -66,23 +69,27 @@ def main():
         format_func=lambda x: translated_nav[x]
     )
     
-    # User registration/login
-    if 'user_id' not in st.session_state:
-        show_registration_login()
+    # Check if admin portal is selected
+    if selected_page == "Admin Portal":
+        show_admin_portal()
     else:
-        # Show selected page
-        if selected_page == "Dashboard":
-            show_dashboard()
-        elif selected_page == "Health Records":
-            show_health_records()
-        elif selected_page == "Upload Documents":
-            show_upload_documents()
-        elif selected_page == "Prescription Analysis":
-            show_prescription_analysis()
-        elif selected_page == "Emergency SOS":
-            show_emergency_sos()
-        elif selected_page == "Profile":
-            show_profile()
+        # User registration/login
+        if 'user_id' not in st.session_state:
+            show_registration_login()
+        else:
+            # Show selected page
+            if selected_page == "Dashboard":
+                show_dashboard()
+            elif selected_page == "Health Records":
+                show_health_records()
+            elif selected_page == "Upload Documents":
+                show_upload_documents()
+            elif selected_page == "Prescription Analysis":
+                show_prescription_analysis()
+            elif selected_page == "Emergency SOS":
+                show_emergency_sos()
+            elif selected_page == "Profile":
+                show_profile()
 
 def show_registration_login():
     st.subheader(translator.translate_text("Welcome to Arogya Mitra", st.session_state.language))
@@ -420,6 +427,10 @@ def show_profile():
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
+
+def show_admin_portal():
+    """Show admin portal"""
+    admin_portal.render_admin_portal()
 
 if __name__ == "__main__":
     main()

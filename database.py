@@ -27,6 +27,18 @@ class DatabaseManager:
             )
         ''')
         
+        # Check if state and city columns exist, if not add them
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'state' not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN state TEXT")
+        
+        if 'city' not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN city TEXT")
+        
+        conn.commit()
+        
         # Health records table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS health_records (
