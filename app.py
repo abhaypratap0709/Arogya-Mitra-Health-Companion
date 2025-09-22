@@ -381,6 +381,16 @@ def show_prescription_analysis():
             ```
             """)
     
+    # Language selector for OCR (installed language packs must exist in Tesseract)
+    col_lang1, col_lang2 = st.columns([1,1])
+    with col_lang1:
+        ocr_lang = st.selectbox(
+            "OCR language",
+            options=["eng", "eng+hin", "eng+tam", "eng+mar", "eng+ben"],
+            index=0,
+            help="Requires corresponding Tesseract language data installed."
+        )
+
     uploaded_file = st.file_uploader(
         translator.translate_text("Upload prescription image", st.session_state.language),
         type=['jpg', 'jpeg', 'png']
@@ -398,7 +408,7 @@ def show_prescription_analysis():
                 try:
                     with st.spinner(translator.translate_text("Analyzing prescription...", st.session_state.language)):
                         # Perform OCR analysis
-                        analysis_result = ocr_analyzer.analyze_prescription(image, st.session_state.language)
+                        analysis_result = ocr_analyzer.analyze_prescription(image, st.session_state.language, tesseract_lang=ocr_lang)
                         
                         if analysis_result:
                             st.success(translator.translate_text("Analysis Complete!", st.session_state.language))
