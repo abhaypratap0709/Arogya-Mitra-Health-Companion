@@ -335,6 +335,136 @@ class AdminPortal:
             )
         else:
             st.info("No users found matching the criteria.")
+
+        st.markdown("---")
+        st.subheader("✏️ User CRUD")
+
+        tab_create, tab_update = st.tabs(["Create User", "Update/Delete User"])
+
+        with tab_create:
+            with st.form("admin_create_user"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    c_name = st.text_input("Full Name *")
+                    c_phone = st.text_input("Phone *")
+                    c_age = st.number_input("Age *", min_value=1, max_value=120, value=30)
+                    c_gender = st.selectbox("Gender *", ["Male", "Female", "Other"])
+                with col2:
+                    c_state = st.text_input("State")
+                    c_city = st.text_input("City")
+                    c_password = st.text_input("Password *", type="password")
+                c_submit = st.form_submit_button("Create User")
+                if c_submit:
+                    if all([c_name.strip(), c_phone.strip(), c_password.strip()]):
+                        user_id = self.db.create_user(c_name, c_phone, int(c_age), c_gender, c_password, c_state or None, c_city or None)
+                        if user_id:
+                            st.success(f"User created with ID {user_id}")
+                        else:
+                            st.error("Create failed. Phone may already exist.")
+                    else:
+                        st.error("Please fill required fields (Name, Phone, Password)")
+
+        with tab_update:
+            # Selection list for users
+            users_basic = self.db.get_all_users_basic()
+            user_options = {f"{u[1]} ({u[2]}) [ID:{u[0]}]": u[0] for u in users_basic}
+            selected_label = st.selectbox("Select User", list(user_options.keys())) if user_options else None
+            if selected_label:
+                user_id = user_options[selected_label]
+                profile = self.db.get_user_profile(user_id)
+                if profile:
+                    with st.form("admin_update_user"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            u_name = st.text_input("Full Name", value=profile[1] or "")
+                            u_phone = st.text_input("Phone", value=profile[2] or "")
+                            u_age = st.number_input("Age", min_value=1, max_value=120, value=int(profile[3]) if profile[3] else 30)
+                            u_gender = st.selectbox("Gender", ["Male", "Female", "Other"], index=( ["Male","Female","Other"].index(profile[4]) if profile[4] in ["Male","Female","Other"] else 0))
+                        with col2:
+                            u_state = st.text_input("State", value=profile[5] or "")
+                            u_city = st.text_input("City", value=profile[6] or "")
+                            u_password = st.text_input("Reset Password (optional)", type="password")
+                        colu1, colu2 = st.columns(2)
+                        with colu1:
+                            do_update = st.form_submit_button("Save Changes")
+                        with colu2:
+                            do_delete = st.form_submit_button("Delete User", type="secondary")
+
+                    if do_update:
+                        self.db.update_user(
+                            user_id,
+                            name=u_name.strip(),
+                            phone=u_phone.strip(),
+                            age=int(u_age),
+                            gender=u_gender,
+                            state=u_state.strip() or None,
+                            city=u_city.strip() or None,
+                            password=u_password.strip() or None
+                        )
+                        st.success("User updated")
+                        st.rerun()
+
+                    if do_delete:
+                        self.db.delete_user(user_id)
+                        st.success("User deleted")
+                        st.rerun()
+
+                # Health Records management for this user
+                st.markdown("---")
+                st.subheader("🗂️ Health Records for Selected User")
+                records = self.db.get_health_records_for_user(user_id)
+                if records:
+                    rec_df = pd.DataFrame(records, columns=['ID','Date','Type','Description','Doctor','Hospital'])
+                    st.dataframe(rec_df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No records yet for this user.")
+
+                # Add new record
+                with st.expander("Add New Record"):
+                    with st.form("admin_add_record"):
+                        r_type = st.selectbox("Record Type", ["Consultation","Lab Report","Prescription","Vaccination","Surgery","Other"])
+                        r_desc = st.text_area("Description *")
+                        r_doc = st.text_input("Doctor Name *")
+                        r_hosp = st.text_input("Hospital/Clinic Name *")
+                        r_date = st.date_input("Date *")
+                        r_add = st.form_submit_button("Add Record")
+                        if r_add:
+                            if all([r_desc.strip(), r_doc.strip(), r_hosp.strip(), r_date]):
+                                self.db.add_health_record(user_id, r_type, r_desc, r_doc, r_hosp, r_date)
+                                st.success("Record added")
+                                st.rerun()
+                            else:
+                                st.error("Fill all required fields")
+
+                # Update/Delete existing record
+                if records:
+                    with st.expander("Edit/Delete Record"):
+                        record_map = {f"{r[0]} - {r[2]} - {r[1]}": r for r in records}
+                        selected_rec_label = st.selectbox("Select Record", list(record_map.keys()))
+                        rid, rdate, rtype, rdesc, rdoc, rhosp = record_map[selected_rec_label]
+                        with st.form("admin_edit_record"):
+                            e_type = st.selectbox("Record Type", ["Consultation","Lab Report","Prescription","Vaccination","Surgery","Other"], index=["Consultation","Lab Report","Prescription","Vaccination","Surgery","Other"].index(rtype) if rtype in ["Consultation","Lab Report","Prescription","Vaccination","Surgery","Other"] else 0)
+                            e_desc = st.text_area("Description *", value=rdesc or "")
+                            e_doc = st.text_input("Doctor Name *", value=rdoc or "")
+                            e_hosp = st.text_input("Hospital/Clinic Name *", value=rhosp or "")
+                            e_date = st.date_input("Date *", value=pd.to_datetime(rdate).date() if rdate else None)
+                            colr1, colr2 = st.columns(2)
+                            with colr1:
+                                rec_update = st.form_submit_button("Save Changes")
+                            with colr2:
+                                rec_delete = st.form_submit_button("Delete Record", type="secondary")
+
+                        if rec_update:
+                            if all([e_desc.strip(), e_doc.strip(), e_hosp.strip(), e_date]):
+                                self.db.update_health_record(rid, record_type=e_type, description=e_desc, doctor_name=e_doc, hospital_name=e_hosp, record_date=e_date)
+                                st.success("Record updated")
+                                st.rerun()
+                            else:
+                                st.error("Fill all required fields")
+                        if rec_delete:
+                            self.db.delete_health_record(rid)
+                            st.success("Record deleted")
+                            st.rerun()
     
     def render_analytics(self):
         """Render analytics page"""

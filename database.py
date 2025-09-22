@@ -9,104 +9,109 @@ class DatabaseManager:
     
     def init_database(self):
         """Initialize database with required tables"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # Users table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                phone TEXT UNIQUE NOT NULL,
-                age INTEGER,
-                gender TEXT,
-                state TEXT,
-                city TEXT,
-                password_hash TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # Check if state and city columns exist, if not add them
-        cursor.execute("PRAGMA table_info(users)")
-        columns = [column[1] for column in cursor.fetchall()]
-        
-        if 'state' not in columns:
-            cursor.execute("ALTER TABLE users ADD COLUMN state TEXT")
-        
-        if 'city' not in columns:
-            cursor.execute("ALTER TABLE users ADD COLUMN city TEXT")
-        
-        conn.commit()
-        
-        # Health records table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS health_records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                record_type TEXT,
-                description TEXT,
-                doctor_name TEXT,
-                hospital_name TEXT,
-                record_date DATE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
-        
-        # Documents table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS documents (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                filename TEXT,
-                document_type TEXT,
-                file_data TEXT,
-                file_type TEXT,
-                upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
-        
-        # Vital signs table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS vital_signs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                measurement_type TEXT,
-                value REAL,
-                unit TEXT,
-                measurement_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
-        
-        # Prescription analysis table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS prescription_analysis (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                filename TEXT,
-                extracted_text TEXT,
-                medications TEXT,
-                analysis_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
-        
-        # Badges/achievements table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS user_badges (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                badge_name TEXT,
-                earned_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
-        
-        conn.commit()
-        conn.close()
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Users table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    phone TEXT UNIQUE NOT NULL,
+                    age INTEGER,
+                    gender TEXT,
+                    state TEXT,
+                    city TEXT,
+                    password_hash TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Check if state and city columns exist, if not add them
+            cursor.execute("PRAGMA table_info(users)")
+            columns = [column[1] for column in cursor.fetchall()]
+            
+            if 'state' not in columns:
+                cursor.execute("ALTER TABLE users ADD COLUMN state TEXT")
+            
+            if 'city' not in columns:
+                cursor.execute("ALTER TABLE users ADD COLUMN city TEXT")
+            
+            conn.commit()
+            # Health records table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS health_records (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    record_type TEXT,
+                    description TEXT,
+                    doctor_name TEXT,
+                    hospital_name TEXT,
+                    record_date DATE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )
+            ''')
+            
+            # Documents table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS documents (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    filename TEXT,
+                    document_type TEXT,
+                    file_data TEXT,
+                    file_type TEXT,
+                    upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )
+            ''')
+            
+            # Vital signs table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS vital_signs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    measurement_type TEXT,
+                    value REAL,
+                    unit TEXT,
+                    measurement_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )
+            ''')
+            
+            # Prescription analysis table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS prescription_analysis (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    filename TEXT,
+                    extracted_text TEXT,
+                    medications TEXT,
+                    analysis_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )
+            ''')
+            
+            # Badges/achievements table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS user_badges (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    badge_name TEXT,
+                    earned_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )
+            ''')
+            
+            conn.commit()
+        except Exception as e:
+            print(f"Database initialization error: {str(e)}")
+            raise
+        finally:
+            if 'conn' in locals():
+                conn.close()
     
     def hash_password(self, password):
         """Hash password using SHA-256"""
@@ -331,3 +336,117 @@ class DatabaseManager:
         badges = [row[0] for row in cursor.fetchall()]
         conn.close()
         return badges
+
+    # ----------------------
+    # Admin CRUD operations
+    # ----------------------
+    def get_all_users_basic(self):
+        """Return id, name, phone for all users (for selectors)."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, name, phone FROM users ORDER BY created_at DESC')
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
+    def update_user(self, user_id, name=None, phone=None, age=None, gender=None, state=None, city=None, password=None):
+        """Update user fields. Only provided fields are updated. Password is re-hashed if provided."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        fields = []
+        values = []
+        if name is not None:
+            fields.append('name = ?')
+            values.append(name)
+        if phone is not None:
+            fields.append('phone = ?')
+            values.append(phone)
+        if age is not None:
+            fields.append('age = ?')
+            values.append(age)
+        if gender is not None:
+            fields.append('gender = ?')
+            values.append(gender)
+        if state is not None:
+            fields.append('state = ?')
+            values.append(state)
+        if city is not None:
+            fields.append('city = ?')
+            values.append(city)
+        if password is not None:
+            fields.append('password_hash = ?')
+            values.append(self.hash_password(password))
+
+        if not fields:
+            conn.close()
+            return False
+        values.append(user_id)
+        cursor.execute(f"UPDATE users SET {', '.join(fields)} WHERE id = ?", values)
+        conn.commit()
+        conn.close()
+        return True
+
+    def delete_user(self, user_id):
+        """Delete user and cascade delete their dependent rows."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        # Delete dependents first
+        cursor.execute('DELETE FROM health_records WHERE user_id = ?', (user_id,))
+        cursor.execute('DELETE FROM documents WHERE user_id = ?', (user_id,))
+        cursor.execute('DELETE FROM vital_signs WHERE user_id = ?', (user_id,))
+        cursor.execute('DELETE FROM prescription_analysis WHERE user_id = ?', (user_id,))
+        cursor.execute('DELETE FROM user_badges WHERE user_id = ?', (user_id,))
+        cursor.execute('DELETE FROM users WHERE id = ?', (user_id,))
+        conn.commit()
+        conn.close()
+        return True
+
+    def get_health_records_for_user(self, user_id):
+        """Admin helper to fetch all fields for a user's records."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, record_date, record_type, description, doctor_name, hospital_name
+            FROM health_records WHERE user_id = ? ORDER BY record_date DESC
+        ''', (user_id,))
+        records = cursor.fetchall()
+        conn.close()
+        return records
+
+    def update_health_record(self, record_id, record_type=None, description=None, doctor_name=None, hospital_name=None, record_date=None):
+        """Update health record fields. Only provided ones are changed."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        fields = []
+        values = []
+        if record_type is not None:
+            fields.append('record_type = ?')
+            values.append(record_type)
+        if description is not None:
+            fields.append('description = ?')
+            values.append(description)
+        if doctor_name is not None:
+            fields.append('doctor_name = ?')
+            values.append(doctor_name)
+        if hospital_name is not None:
+            fields.append('hospital_name = ?')
+            values.append(hospital_name)
+        if record_date is not None:
+            fields.append('record_date = ?')
+            values.append(record_date)
+        if not fields:
+            conn.close()
+            return False
+        values.append(record_id)
+        cursor.execute(f"UPDATE health_records SET {', '.join(fields)} WHERE id = ?", values)
+        conn.commit()
+        conn.close()
+        return True
+
+    def delete_health_record(self, record_id):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM health_records WHERE id = ?', (record_id,))
+        conn.commit()
+        conn.close()
+        return True

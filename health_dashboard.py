@@ -12,31 +12,48 @@ class HealthDashboard:
     
     def render_dashboard(self, user_id, language='en'):
         """Render the main health dashboard"""
-        
-        # Health Score Section
-        col1, col2, col3 = st.columns([1, 1, 1])
-        
-        with col1:
-            health_score = self.calculate_health_score(user_id)
-            st.metric(
-                self.translator.translate_text("Health Score", language),
-                f"{health_score}/100",
-                delta=self.get_health_score_trend(user_id)
-            )
-        
-        with col2:
-            record_count = len(self.db.get_health_records(user_id))
-            st.metric(
-                self.translator.translate_text("Health Records", language),
-                record_count
-            )
-        
-        with col3:
-            badge_count = len(self.db.get_user_badges(user_id))
-            st.metric(
-                self.translator.translate_text("Badges Earned", language),
-                badge_count
-            )
+        try:
+            # Health Score Section
+            col1, col2, col3 = st.columns([1, 1, 1])
+            
+            with col1:
+                health_score = self.calculate_health_score(user_id)
+                st.metric(
+                    self.translator.translate_text("Health Score", language),
+                    f"{health_score}/100",
+                    delta=self.get_health_score_trend(user_id)
+                )
+            
+            with col2:
+                try:
+                    record_count = len(self.db.get_health_records(user_id))
+                    st.metric(
+                        self.translator.translate_text("Health Records", language),
+                        record_count
+                    )
+                except Exception as e:
+                    st.metric(
+                        self.translator.translate_text("Health Records", language),
+                        "Error"
+                    )
+                    st.caption("Unable to load records")
+            
+            with col3:
+                try:
+                    badge_count = len(self.db.get_user_badges(user_id))
+                    st.metric(
+                        self.translator.translate_text("Badges Earned", language),
+                        badge_count
+                    )
+                except Exception as e:
+                    st.metric(
+                        self.translator.translate_text("Badges Earned", language),
+                        "Error"
+                    )
+                    st.caption("Unable to load badges")
+        except Exception as e:
+            st.error(f"Error loading dashboard: {str(e)}")
+            st.info("Please refresh the page or contact support if the problem persists.")
         
         # Quick Actions with persistent toggles
         st.subheader(self.translator.translate_text("Quick Actions", language))

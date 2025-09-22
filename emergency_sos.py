@@ -154,64 +154,56 @@ class EmergencySOSManager:
                 return main_city
         
         return None
-
+    
     def get_nearest_hospitals_map(self, city_name):
         """Generate a map showing nearest hospitals"""
-        matched_city = self.find_city_match(city_name)
-        
-        if matched_city:
-            hospitals = self.hospitals_data[matched_city]
-            # Calculate center point
-            center_lat = sum(h['lat'] for h in hospitals) / len(hospitals)
-            center_lon = sum(h['lon'] for h in hospitals) / len(hospitals)
-        else:
-            # Default to Delhi if city not found
-            hospitals = self.hospitals_data['delhi']
-            center_lat, center_lon = 28.6139, 77.2090
-        
-        # Create map
-        m = folium.Map(
-            location=[center_lat, center_lon],
-            zoom_start=12,
-            tiles='OpenStreetMap'
-        )
-        
-        # Add hospital markers
-        for hospital in hospitals:
-            popup_text = f"""
-            <div style="width: 200px;">
-                <h4>{hospital['name']}</h4>
-                <p><strong>📞 Phone:</strong> {hospital['phone']}</p>
-                <p><a href="tel:{hospital['phone']}" target="_blank">Call Now</a></p>
-            </div>
-            """
+        try:
+            matched_city = self.find_city_match(city_name)
             
-            folium.Marker(
-                location=[hospital['lat'], hospital['lon']],
-                popup=folium.Popup(popup_text, max_width=300),
-                tooltip=hospital['name'],
-                icon=folium.Icon(color='red', icon='plus', prefix='fa')
-            ).add_to(m)
-        
-        # Add emergency contacts in the corner
-        emergency_html = '''
-        <div style="position: fixed; 
-                    top: 10px; right: 10px; width: 200px; height: auto; 
-                    background-color: white; border:2px solid grey; z-index:9999; 
-                    font-size:14px; padding: 10px">
-        <h4>🚨 Emergency Contacts</h4>
-        '''
-        
-        for contact, number in self.emergency_contacts.items():
-            emergency_html += f'<p><strong>{contact}:</strong> <a href="tel:{number}">{number}</a></p>'
-        
-        emergency_html += '</div>'
-        
-        # Add emergency contacts as a custom HTML element
-        # Temporarily commented out due to folium API changes
-        # m.get_root().html.add_child(folium.Element(emergency_html))
-        
-        return m
+            if matched_city:
+                hospitals = self.hospitals_data[matched_city]
+                # Calculate center point
+                center_lat = sum(h['lat'] for h in hospitals) / len(hospitals)
+                center_lon = sum(h['lon'] for h in hospitals) / len(hospitals)
+            else:
+                # Default to Delhi if city not found
+                hospitals = self.hospitals_data['delhi']
+                center_lat, center_lon = 28.6139, 77.2090
+            
+            # Create map
+            m = folium.Map(
+                location=[center_lat, center_lon],
+                zoom_start=12,
+                tiles='OpenStreetMap'
+            )
+            
+            # Add hospital markers
+            for hospital in hospitals:
+                popup_text = f"""
+                <div style="width: 200px;">
+                    <h4>{hospital['name']}</h4>
+                    <p><strong>📞 Phone:</strong> {hospital['phone']}</p>
+                    <p><a href="tel:{hospital['phone']}" target="_blank">Call Now</a></p>
+                </div>
+                """
+                
+                folium.Marker(
+                    location=[hospital['lat'], hospital['lon']],
+                    popup=folium.Popup(popup_text, max_width=300),
+                    tooltip=hospital['name'],
+                    icon=folium.Icon(color='red', icon='plus', prefix='fa')
+                ).add_to(m)
+            
+            return m
+        except Exception as e:
+            print(f"Error creating map: {str(e)}")
+            # Return a simple map centered on Delhi as fallback
+            m = folium.Map(
+                location=[28.6139, 77.2090],
+                zoom_start=10,
+                tiles='OpenStreetMap'
+            )
+            return m
     
     def get_hospital_list(self, city_name):
         """Get list of hospitals for a city"""
