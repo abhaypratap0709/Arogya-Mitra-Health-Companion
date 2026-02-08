@@ -1,3 +1,16 @@
+<<<<<<< HEAD
 streamlit
 faster-whisper
 ffmpeg-python
+=======
+streamlit>=1.35.0,<2
+plotly>=5.18.0,<6
+pandas>=2.3.2
+pytesseract>=0.3.13
+googletrans==4.0.0rc1
+folium>=0.20.0
+requests>=2.32.5
+streamlit-folium>=0.25.1
+pillow>=10.3.0
+opencv-python-headless>=4.10.0
+>>>>>>> 813aedbc3d7484ef0593eb2a7a20d3b6873f94ee

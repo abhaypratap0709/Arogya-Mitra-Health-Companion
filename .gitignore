@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Third-party binaries and archives
 ffmpeg-8.0.1-full_build/
 *.rar
@@ -9,3 +10,59 @@ ffmpeg-8.0.1-full_build/
 
 # Optional: uncomment to exclude database from root
 # *.db
+=======
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Database
+*.db
+*.sqlite3
+
+# Streamlit
+.streamlit/secrets.toml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Keep the database file for demo purposes
+!arogya_mitra.db
+>>>>>>> 813aedbc3d7484ef0593eb2a7a20d3b6873f94ee
