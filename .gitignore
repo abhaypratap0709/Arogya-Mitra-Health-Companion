@@ -1,0 +1,11 @@
+# Third-party binaries and archives
+ffmpeg-8.0.1-full_build/
+*.rar
+*.zip
+
+# Environment and secrets
+.env
+.env.*
+
+# Optional: uncomment to exclude database from root
+# *.db
